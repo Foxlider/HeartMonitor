@@ -4,10 +4,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                 xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
-                 xmlns:speedTest="clr-namespace:HeartMonitorWPF"
-                 mc:Ignorable="d"
-             Title="MainWindow" Height="450" Width="800">
+             xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
+             xmlns:speedTest="clr-namespace:HeartMonitorWPF"
+             mc:Ignorable="d"
+             Title="HeartMonitor" Height="450" Width="800">
     <mah:MetroWindow.DataContext>
         <speedTest:SpeedTestVm></speedTest:SpeedTestVm>
     </mah:MetroWindow.DataContext>
@@ -16,21 +16,22 @@
             <RowDefinition Height="Auto"></RowDefinition>
             <RowDefinition Height="Auto"></RowDefinition>
             <RowDefinition Height="*"></RowDefinition>
+            <RowDefinition Height="Auto"></RowDefinition>
         </Grid.RowDefinitions>
-        <TextBlock TextWrapping="Wrap">Here we are adding a value every millisecond from 2 different tasks</TextBlock>
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="15">
+        <!--<TextBlock TextWrapping="Wrap">Here we are adding a value every millisecond from 2 different tasks</TextBlock>-->
+        <!--<StackPanel Grid.Row="1" Orientation="Horizontal" Margin="15">
             <Button Command="{Binding ReadCommand}">Start Lecture</Button>
             <Button Command="{Binding StopCommand}">Stop</Button>
             <Button Command="{Binding CleaCommand}">Clear</Button>
             <TextBlock VerticalAlignment="Center" Margin="15 0" Text="{Binding Count, StringFormat=Buffer: {0}}"></TextBlock>
-        </StackPanel>
-        <lvc:CartesianChart Grid.Row="2" DisableAnimations="True" DataTooltip="{x:Null}" Hoverable="False">
+        </StackPanel>-->
+        <lvc:CartesianChart Grid.Row="2" Grid.RowSpan="2" DisableAnimations="True" DataTooltip="{x:Null}" Hoverable="False">
             <lvc:CartesianChart.Resources>
                 <Style TargetType="lvc:LineSeries">
-                    <Setter Property="StrokeThickness" Value="0"></Setter>
+                    <Setter Property="StrokeThickness" Value="1"></Setter>
                     <Setter Property="Fill" Value="#CC2196F3"></Setter>
                     <Setter Property="LineSmoothness" Value=".3"></Setter>
-                    <Setter Property="AreaLimit" Value="0"></Setter>
+                    <!--<Setter Property="AreaLimit" Value="0"></Setter>-->
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding IsHot}" Value="true">
                             <Setter Property="Fill" Value="#CCFF5722"></Setter>
@@ -39,7 +40,7 @@
                 </Style>
                 <Style TargetType="lvc:Separator">
                     <Setter Property="Stroke" Value="#DADADA"></Setter>
-                    <Setter Property="StrokeThickness" Value="2"></Setter>
+                    <Setter Property="StrokeThickness" Value="1"></Setter>
                     <Style.Triggers>
                         <Trigger Property="AxisOrientation" Value="X">
                             <Setter Property="IsEnabled" Value="False"></Setter>
@@ -51,18 +52,24 @@
                 <lvc:LineSeries Values="{Binding Values}" PointGeometry="{x:Null}"></lvc:LineSeries>
             </lvc:CartesianChart.Series>
             <lvc:CartesianChart.AxisX>
-                <lvc:Axis MaxValue="240" ShowLabels="False"></lvc:Axis>
+                <lvc:Axis MaxValue="{Binding Buffer}" ShowLabels="False"></lvc:Axis>
             </lvc:CartesianChart.AxisX>
             <lvc:CartesianChart.AxisY>
                 <lvc:Axis>
                     <lvc:Axis.Sections>
-                        <lvc:AxisSection Value="0" StrokeThickness="3" Stroke="#303030"></lvc:AxisSection>
+                        <lvc:AxisSection Value="100" StrokeThickness="2" Stroke="#303030"></lvc:AxisSection>
                     </lvc:Axis.Sections>
                 </lvc:Axis>
             </lvc:CartesianChart.AxisY>
         </lvc:CartesianChart>
-        <TextBlock Grid.Row="2" VerticalAlignment="Bottom" HorizontalAlignment="Right" 
+        <TextBlock Grid.Row="2" Grid.RowSpan="2" VerticalAlignment="Bottom" HorizontalAlignment="Right" 
                    Margin="40 20" FontSize="110" Foreground="#72000000" 
-                   Text="{Binding CurrentLecture, StringFormat={}{0:N1} BPM}"></TextBlock>
+                   Text="{Binding CurrentLecture, StringFormat={}{0:N0} BPM}"></TextBlock>
+        <mah:Flyout Name="FlyoutPopup" Grid.Row="3" IsOpen="{Binding FlyoutOpen}" AutoCloseInterval="5000" IsAutoCloseEnabled="True" Position="Bottom" MaxHeight="100" Opacity="0.8" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" >
+            <mah:Flyout.Effect>
+                <DropShadowEffect BlurRadius="10" RenderingBias="Performance" ShadowDepth="0"/>
+            </mah:Flyout.Effect>
+            <Label Name="flyoutMessage" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Content="{Binding FlyoutMessage}"/>
+        </mah:Flyout>
     </Grid>
 </mah:MetroWindow>

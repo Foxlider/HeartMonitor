@@ -13,12 +13,16 @@ namespace HeartMonitorWPF
     /// </summary>
     public partial class MainWindow
     {
-
-
         public MainWindow()
         {
             InitializeComponent();
         }
+
+        //private void DisplayMessage(string msg)
+        //{
+        //    flyoutMessage.Content = msg;
+        //    FlyoutPopup.IsOpen = true;
+        //}
 
     }
 
