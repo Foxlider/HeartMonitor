@@ -1,36 +1,35 @@
-﻿using LiveCharts.Geared;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Devices.Enumeration;
+using LiveCharts.Geared;
 
 namespace HeartMonitorWPF
 {
     public class SpeedTestVm : INotifyPropertyChanged
     {
         static List<DeviceInformation> _deviceList = new List<DeviceInformation>();
-        static BluetoothLEDevice _selectedDevice = null;
+        static BluetoothLEDevice _selectedDevice;
 
         static List<BluetoothLEAttributeDisplay> _services = new List<BluetoothLEAttributeDisplay>();
-        static BluetoothLEAttributeDisplay _selectedService = null;
+        static BluetoothLEAttributeDisplay _selectedService;
 
         static List<BluetoothLEAttributeDisplay> _characteristics = new List<BluetoothLEAttributeDisplay>();
 
         // Only one registered characteristic at a time.
         static List<GattCharacteristic> _subscribers = new List<GattCharacteristic>();
 
-        static ManualResetEvent _notifyCompleteEvent = null;
-        static bool _primed = false;
-        private double LastReading;
+        static ManualResetEvent _notifyCompleteEvent;
+        static bool _primed;
+        private double LastReading = 80;
 
         static readonly string _aqsAllBLEDevices = "(System.Devices.Aep.ProtocolId:=\"{bb7bb05e-5972-42b5-94fc-76eaa7084d49}\")";
-        static readonly string[] _requestedBLEProperties = { "System.Devices.Aep.DeviceAddress", "System.Devices.Aep.Bluetooth.Le.IsConnectable", };
+        static readonly string[] _requestedBLEProperties = { "System.Devices.Aep.DeviceAddress", "System.Devices.Aep.Bluetooth.Le.IsConnectable" };
 
         // Current data format
         static readonly DataFormat _dataFormat = DataFormat.Dec;
@@ -46,16 +45,14 @@ namespace HeartMonitorWPF
             Values = new GearedValues<double>().WithQuality(Quality.Highest);
             ReadCommand = new RelayCommand(Read);
             StopCommand = new RelayCommand(Stop);
-            CleaCommand = new RelayCommand(Clear);
             Values.AddRange(Enumerable.Repeat(_trend, Buffer));
             Task.Factory.StartNew(Commands);
             ReadCommand.Execute(null);
         }
 
         public bool IsReading { get; set; }
-        public RelayCommand ReadCommand { get; set; }
-        public RelayCommand StopCommand { get; set; }
-        public RelayCommand CleaCommand { get; set; }
+        public RelayCommand ReadCommand { get; }
+        public RelayCommand StopCommand { get; }
         public GearedValues<double> Values { get; set; }
 
         public int Buffer { get; } = 10240;
@@ -72,11 +69,11 @@ namespace HeartMonitorWPF
                 OnPropertyChanged("FlyoutMessage");
             }
         }
-        public bool FlyoutOpen { get; set; } = false;
+        public bool FlyoutOpen { get; set; }
 
         public double Count
         {
-            get { return _count; }
+            get => _count;
             set
             {
                 _count = value;
@@ -86,7 +83,7 @@ namespace HeartMonitorWPF
 
         public double CurrentLecture
         {
-            get { return _currentLecture; }
+            get => _currentLecture;
             set
             {
                 _currentLecture = value;
@@ -96,7 +93,7 @@ namespace HeartMonitorWPF
 
         public bool IsHot
         {
-            get { return _isHot; }
+            get => _isHot;
             set
             {
                 var changed = value != _isHot;
@@ -112,12 +109,6 @@ namespace HeartMonitorWPF
             FlyoutMessage = "STOPPED";
         }
 
-        private void Clear()
-        {
-            Values.Clear();
-            FlyoutMessage = "CLEARED";
-        }
-
         private void Read()
         {
             FlyoutMessage = "READING";
@@ -127,25 +118,28 @@ namespace HeartMonitorWPF
             //to keep everything running faster
             IsReading = true;
 
-            void readFromTread()
-            {
-                while (IsReading)
-                {
-                    Thread.Sleep(100);
-
-                    var r = new Random();
-                    //_trend += (r.NextDouble() < 0.02 ? 1 : 0) * (r.NextDouble() < 0.5 ? 1 : -1);
-                    _trend = LastReading;
-                    var first = Values.DefaultIfEmpty(0).FirstOrDefault();
-                    if (Values.Count > Buffer - 1) Values.Remove(first);
-                    if (Values.Count < Buffer) Values.Add(_trend);
-                    IsHot = _trend > 100;
-                    Count = Values.Count;
-                    CurrentLecture = _trend;
-                }
-            }
-
             Task.Factory.StartNew(readFromTread);
+        }
+        private void readFromTread()
+        {
+            while (IsReading)
+            {
+                Thread.Sleep(100);
+
+                _trend = LastReading;
+                
+                //Remove first value
+                var first = Values.DefaultIfEmpty(0).FirstOrDefault();
+                if (Values.Count > Buffer - 1) 
+                    Values.Remove(first);
+
+                if (Values.Count < Buffer) 
+                    Values.Add(_trend);
+                
+                IsHot = _trend > 100;
+                Count = Values.Count;
+                CurrentLecture = _trend;
+            }
         }
 
         /// <summary>
@@ -174,18 +168,17 @@ namespace HeartMonitorWPF
         private async void Commands()
         {
             var watcher = DeviceInformation.CreateWatcher(_aqsAllBLEDevices, _requestedBLEProperties, DeviceInformationKind.AssociationEndpoint);
-            watcher.Added += (DeviceWatcher sender, DeviceInformation devInfo) =>
+            watcher.Added += (sender, devInfo) =>
             {
-                if (_deviceList.FirstOrDefault(d => d.Id.Equals(devInfo.Id) || d.Name.Equals(devInfo.Name)) == null) _deviceList.Add(devInfo);
+                if (_deviceList.FirstOrDefault(d => d.Id.Equals(devInfo.Id) || d.Name.Equals(devInfo.Name)) == null) 
+                    _deviceList.Add(devInfo);
             };
             watcher.Updated += (_, __) => { }; // We need handler for this event, even an empty!
             //Watch for a device being removed by the watcher
-            watcher.Removed += (DeviceWatcher sender, DeviceInformationUpdate devInfo) =>
-            {
-                _deviceList.Remove(FindKnownDevice(devInfo.Id));
-            };
-            watcher.EnumerationCompleted += (DeviceWatcher sender, object arg) => { sender.Stop(); };
-            watcher.Stopped += (DeviceWatcher sender, object arg) => { _deviceList.Clear(); sender.Start(); };
+            watcher.Removed += (sender, devInfo) =>
+            { _deviceList.Remove(FindKnownDevice(devInfo.Id)); };
+            watcher.EnumerationCompleted += (sender, arg) => { sender.Stop(); };
+            watcher.Stopped += (sender, arg) => { _deviceList.Clear(); sender.Start(); };
             watcher.Start();
 
             //Search for polar device
@@ -229,15 +222,13 @@ namespace HeartMonitorWPF
         {
             var names = _deviceList.OrderBy(d => d.Name).Where(d => !string.IsNullOrEmpty(d.Name)).Select(d => d.Name).ToList();
 
-
-            for (int i = 0; i < names.Count(); i++)
+            for (int i = 0; i < names.Count; i++)
                 Console.WriteLine($"#{i:00}: {names[i]}");
         }
 
 
-        private async Task<int> OpenDevice(string deviceName)
+        private async Task OpenDevice(string deviceName)
         {
-            int retVal = 0;
             if (!string.IsNullOrEmpty(deviceName))
             {
                 var devs = _deviceList.OrderBy(d => d.Name).Where(d => !string.IsNullOrEmpty(d.Name)).ToList();
@@ -276,26 +267,18 @@ namespace HeartMonitorWPF
                         else
                         {
                             Console.WriteLine($"Device {deviceName} is unreachable.");
-                            retVal += 1;
                         }
                     }
                     catch
                     {
                         Console.WriteLine($"Device {deviceName} is unreachable.");
-                        retVal += 1;
                     }
-                }
-                else
-                {
-                    retVal += 1;
                 }
             }
             else
             {
                 Console.WriteLine("Device name can not be empty.");
-                retVal += 1;
             }
-            return retVal;
         }
 
         /// <summary>
@@ -306,16 +289,15 @@ namespace HeartMonitorWPF
             // Remove all subscriptions
             if (_subscribers.Count > 0) Unsubscribe("all");
 
-            if (_selectedDevice != null)
-            {
-                if (!Console.IsInputRedirected)
-                    Console.WriteLine($"Device {_selectedDevice.Name} is disconnected.");
+            if (_selectedDevice == null) return;
 
-                _services?.ForEach((s) => { s.service?.Dispose(); });
-                _services?.Clear();
-                _characteristics?.Clear();
-                _selectedDevice?.Dispose();
-            }
+            if (!Console.IsInputRedirected)
+                Console.WriteLine($"Device {_selectedDevice.Name} is disconnected.");
+
+            _services?.ForEach(s => { s.service?.Dispose(); });
+            _services?.Clear();
+            _characteristics?.Clear();
+            _selectedDevice?.Dispose();
         }
 
         /// <summary>
@@ -345,19 +327,14 @@ namespace HeartMonitorWPF
                 _subscribers.Clear();
             }
             // unsubscribe from specific event
-            else
-            {
-
-            }
         }
 
         /// <summary>
         /// Set active service for current device
         /// </summary>
-        /// <param name="parameters"></param>
-        private async Task<int> SetService(string serviceName)
+        /// <param name="serviceName"></param>
+        private async Task SetService(string serviceName)
         {
-            int retVal = 0;
             if (_selectedDevice != null)
             {
                 if (!string.IsNullOrEmpty(serviceName))
@@ -368,93 +345,84 @@ namespace HeartMonitorWPF
                     if (!string.IsNullOrEmpty(foundName))
                     {
                         var attr = _services.FirstOrDefault(s => s.Name.Equals(foundName));
-                        IReadOnlyList<GattCharacteristic> characteristics = new List<GattCharacteristic>();
 
                         try
                         {
                             // Ensure we have access to the device.
-                            var accessStatus = await attr.service.RequestAccessAsync();
-                            if (accessStatus == DeviceAccessStatus.Allowed)
-                            {
-                                // BT_Code: Get all the child characteristics of a service. Use the cache mode to specify uncached characterstics only 
-                                // and the new Async functions to get the characteristics of unpaired devices as well. 
-                                var result = await attr.service.GetCharacteristicsAsync(BluetoothCacheMode.Uncached);
-                                if (result.Status == GattCommunicationStatus.Success)
+                            if (attr != null) {
+                                var accessStatus = await attr.service.RequestAccessAsync();
+                                if (accessStatus == DeviceAccessStatus.Allowed)
                                 {
-                                    characteristics = result.Characteristics;
-                                    _selectedService = attr;
-                                    _characteristics.Clear();
-                                    if (!Console.IsInputRedirected) Console.WriteLine($"Selected service {attr.Name}.");
-
-                                    if (characteristics.Count > 0)
+                                    // BT_Code: Get all the child characteristics of a service. Use the cache mode to specify uncached characterstics only 
+                                    // and the new Async functions to get the characteristics of unpaired devices as well. 
+                                    var result = await attr.service.GetCharacteristicsAsync(BluetoothCacheMode.Uncached);
+                                    if (result.Status == GattCommunicationStatus.Success)
                                     {
-                                        for (int i = 0; i < characteristics.Count; i++)
+                                        var characteristics = result.Characteristics;
+                                        _selectedService = attr;
+                                        _characteristics.Clear();
+                                        if (!Console.IsInputRedirected) Console.WriteLine($"Selected service {attr.Name}.");
+
+                                        if (characteristics.Count > 0)
                                         {
-                                            var charToDisplay = new BluetoothLEAttributeDisplay(characteristics[i]);
-                                            _characteristics.Add(charToDisplay);
-                                            if (!Console.IsInputRedirected) Console.WriteLine($"#{i:00}: {charToDisplay.Name}\t{charToDisplay.Chars}");
+                                            for (int i = 0; i < characteristics.Count; i++)
+                                            {
+                                                var charToDisplay = new BluetoothLEAttributeDisplay(characteristics[i]);
+                                                _characteristics.Add(charToDisplay);
+                                                if (!Console.IsInputRedirected) Console.WriteLine($"#{i:00}: {charToDisplay.Name}\t{charToDisplay.Chars}");
+                                            }
+                                        }
+                                        else
+                                        {
+                                            if (!Console.IsOutputRedirected)
+                                                Console.WriteLine("Service don't have any characteristic.");
                                         }
                                     }
                                     else
                                     {
                                         if (!Console.IsOutputRedirected)
-                                            Console.WriteLine("Service don't have any characteristic.");
-                                        retVal += 1;
+                                            Console.WriteLine("Error accessing service.");
                                     }
                                 }
+                                // Not granted access
                                 else
                                 {
                                     if (!Console.IsOutputRedirected)
                                         Console.WriteLine("Error accessing service.");
-                                    retVal += 1;
                                 }
-                            }
-                            // Not granted access
-                            else
-                            {
-                                if (!Console.IsOutputRedirected)
-                                    Console.WriteLine("Error accessing service.");
-                                retVal += 1;
                             }
                         }
                         catch (Exception ex)
                         {
                             if (!Console.IsOutputRedirected)
                                 Console.WriteLine($"Restricted service. Can't read characteristics: {ex.Message}");
-                            retVal += 1;
                         }
                     }
                     else
                     {
                         if (!Console.IsOutputRedirected)
                             Console.WriteLine("Invalid service name or number");
-                        retVal += 1;
                     }
                 }
                 else
                 {
                     if (!Console.IsOutputRedirected)
                         Console.WriteLine("Invalid service name or number");
-                    retVal += 1;
                 }
             }
             else
             {
                 if (!Console.IsOutputRedirected)
                     Console.WriteLine("Nothing to use, no BLE device connected.");
-                retVal += 1;
             }
-
-            return retVal;
         }
 
         /// <summary>
         /// This function used to add "ValueChanged" event subscription
         /// </summary>
         /// <param name="param"></param>
-        private async Task<int> SubscribeToCharacteristic(string param)
+        private async Task SubscribeToCharacteristic(string param)
         {
-            int retVal = 0;
             if (_selectedDevice != null)
             {
                 if (!string.IsNullOrEmpty(param))
@@ -463,51 +431,51 @@ namespace HeartMonitorWPF
 
                     string charName = string.Empty;
                     var parts = param.Split('/');
-                    // Do we have parameter is in "service/characteristic" format?
-                    if (parts.Length == 2)
+                    switch (parts.Length)
                     {
-                        string serviceName = Utilities.GetIdByNameOrNumber(_services, parts[0]);
-                        charName = parts[1];
+                        // Do we have parameter is in "service/characteristic" format?
+                        case 2: {
+                            string serviceName = Utilities.GetIdByNameOrNumber(_services, parts[0]);
+                            charName = parts[1];
 
-                        // If device is found, connect to device and enumerate all services
-                        if (!string.IsNullOrEmpty(serviceName))
-                        {
-                            var attr = _services.FirstOrDefault(s => s.Name.Equals(serviceName));
-                            IReadOnlyList<GattCharacteristic> characteristics = new List<GattCharacteristic>();
-
-                            try
+                            // If device is found, connect to device and enumerate all services
+                            if (!string.IsNullOrEmpty(serviceName))
                             {
-                                // Ensure we have access to the device.
-                                var accessStatus = await attr.service.RequestAccessAsync();
-                                if (accessStatus == DeviceAccessStatus.Allowed)
+                                var attr = _services.FirstOrDefault(s => s.Name.Equals(serviceName));
+                                IReadOnlyList<GattCharacteristic> characteristics = new List<GattCharacteristic>();
+
+                                try
                                 {
-                                    var result = await attr.service.GetCharacteristicsAsync(BluetoothCacheMode.Uncached);
-                                    if (result.Status == GattCommunicationStatus.Success)
-                                        characteristics = result.Characteristics;
+                                    // Ensure we have access to the device.
+                                    if (attr != null) {
+                                        var accessStatus = await attr.service.RequestAccessAsync();
+                                        if (accessStatus == DeviceAccessStatus.Allowed)
+                                        {
+                                            var result = await attr.service.GetCharacteristicsAsync(BluetoothCacheMode.Uncached);
+                                            if (result.Status == GattCommunicationStatus.Success)
+                                                characteristics = result.Characteristics;
+                                        }
+                                    }
                                 }
-                            }
-                            catch (Exception ex)
-                            {
-                                if (!Console.IsOutputRedirected)
-                                    Console.WriteLine($"Restricted service. Can't subscribe to characteristics: {ex.Message}");
-                                retVal += 1;
-                            }
+                                catch (Exception ex)
+                                {
+                                    if (!Console.IsOutputRedirected)
+                                        Console.WriteLine($"Restricted service. Can't subscribe to characteristics: {ex.Message}");
+                                }
 
-                            foreach (var c in characteristics)
-                                chars.Add(new BluetoothLEAttributeDisplay(c));
+                                chars.AddRange(characteristics.Select(c => new BluetoothLEAttributeDisplay(c)));
+                            }
+                            break;
                         }
-                    }
-                    else if (parts.Length == 1)
-                    {
-                        if (_selectedService == null)
-                        {
+                        case 1 when _selectedService == null: {
                             if (!Console.IsOutputRedirected)
                                 Console.WriteLine("No service is selected.");
-                            retVal += 1;
-                            return retVal;
+                            return;
                         }
-                        chars = new List<BluetoothLEAttributeDisplay>(_characteristics);
-                        charName = parts[0];
+                        case 1:
+                            chars    = new List<BluetoothLEAttributeDisplay>(_characteristics);
+                            charName = parts[0];
+                            break;
                     }
 
                     // Read characteristic
@@ -515,7 +483,7 @@ namespace HeartMonitorWPF
                     {
                         string useName = Utilities.GetIdByNameOrNumber(chars, charName);
                         var attr = chars.FirstOrDefault(c => c.Name.Equals(useName));
-                        if (attr != null && attr.characteristic != null)
+                        if (attr?.characteristic != null)
                         {
                             // First, check for existing subscription
                             if (!_subscribers.Contains(attr.characteristic))
@@ -530,44 +498,37 @@ namespace HeartMonitorWPF
                                 {
                                     if (!Console.IsOutputRedirected)
                                         Console.WriteLine($"Can't subscribe to characteristic {useName}");
-                                    retVal += 1;
                                 }
                             }
                             else
                             {
                                 if (!Console.IsOutputRedirected)
                                     Console.WriteLine($"Already subscribed to characteristic {useName}");
-                                retVal += 1;
                             }
                         }
                         else
                         {
                             if (!Console.IsOutputRedirected)
                                 Console.WriteLine($"Invalid characteristic {useName}");
-                            retVal += 1;
                         }
                     }
                     else
                     {
                         if (!Console.IsOutputRedirected)
                             Console.WriteLine("Nothing to subscribe, please specify characteristic name or #.");
-                        retVal += 1;
                     }
                 }
                 else
                 {
                     if (!Console.IsOutputRedirected)
                         Console.WriteLine("Nothing to subscribe, please specify characteristic name or #.");
-                    retVal += 1;
                 }
             }
             else
             {
                 if (!Console.IsOutputRedirected)
                     Console.WriteLine("No BLE device connected.");
-                retVal += 1;
             }
-            return retVal;
         }
 
         private DeviceInformation FindKnownDevice(string deviceId)

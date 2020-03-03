@@ -33,35 +33,17 @@ namespace HeartMonitorConsole
 
         public string Chars => (CanRead ? "R" : " ") + (CanWrite ? "W" : " ") + (CanNotify ? "N" : " ");
 
-        public bool CanRead
-        {
-            get
-            {
-                return this.characteristic != null ? this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Read) : false;
-            }
-        }
+        public bool CanRead => this.characteristic != null && this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Read);
 
-        public bool CanWrite
-        {
-            get
-            {
-                return this.characteristic != null ?
-                    (this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Write) ||
-                     this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.WriteWithoutResponse) ||
-                     this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.ReliableWrites) ||
-                     this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.WritableAuxiliaries))
-                    : false;
-            }
-        }
+        public bool CanWrite =>
+            this.characteristic != null ?
+                (this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Write)                ||
+                 this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.WriteWithoutResponse) ||
+                 this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.ReliableWrites)       ||
+                 this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.WritableAuxiliaries))
+                : false;
 
-        public bool CanNotify
-        {
-            get
-            {
-                return this.characteristic != null ? this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Notify) : false;
-            }
-        }
-
+        public bool CanNotify => this.characteristic != null && this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Notify);
 
         public string Name
         {
@@ -103,8 +85,6 @@ namespace HeartMonitorConsole
                                 return "Custom Characteristic: " + characteristic.Uuid;
                             }
                         }
-                        break;
-                    default:
                         break;
                 }
                 return "Invalid";
@@ -250,9 +230,9 @@ namespace HeartMonitorConsole
         {
             string result = string.Empty;
             // ... for devices
-            if (collection is List<DeviceInformation>)
+            if (collection is List<DeviceInformation> list)
             {
-                var foundDevices = (collection as List<DeviceInformation>).Where(d => d.Name.ToLower().StartsWith(name.ToLower())).ToList();
+                var foundDevices = list.Where(d => d.Name.ToLower().StartsWith(name.ToLower())).ToList();
                 if (foundDevices.Count == 0)
                 {
                     if (!Console.IsOutputRedirected)
@@ -271,7 +251,7 @@ namespace HeartMonitorConsole
             // for services or attributes
             else
             {
-                var foundDispAttrs = (collection as List<BluetoothLEAttributeDisplay>).Where(d => d.Name.ToLower().StartsWith(name.ToLower())).ToList();
+                var foundDispAttrs = ((collection as List<BluetoothLEAttributeDisplay>) ?? throw new InvalidOperationException()).Where(d => d.Name.ToLower().StartsWith(name.ToLower())).ToList();
                 if (foundDispAttrs.Count == 0)
                 {
                     if (Console.IsOutputRedirected)

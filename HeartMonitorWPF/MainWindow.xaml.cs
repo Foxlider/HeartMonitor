@@ -1,9 +1,5 @@
-﻿using LiveCharts.Geared;
-using System;
+﻿using System;
 using System.ComponentModel;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Input;
 
 namespace HeartMonitorWPF

@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Text;
 using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Devices.Enumeration;
 using Windows.Security.Cryptography;
 using Windows.Storage.Streams;
-using System.Threading.Tasks;
-using System.Threading;
 
 namespace HeartMonitorWPF
 {
@@ -33,35 +33,15 @@ namespace HeartMonitorWPF
 
         public string Chars => (CanRead ? "R" : " ") + (CanWrite ? "W" : " ") + (CanNotify ? "N" : " ");
 
-        public bool CanRead
-        {
-            get
-            {
-                return this.characteristic != null ? this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Read) : false;
-            }
-        }
+        public bool CanRead => characteristic != null && characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Read);
 
-        public bool CanWrite
-        {
-            get
-            {
-                return this.characteristic != null ?
-                    (this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Write) ||
-                     this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.WriteWithoutResponse) ||
-                     this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.ReliableWrites) ||
-                     this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.WritableAuxiliaries))
-                    : false;
-            }
-        }
+        public bool CanWrite =>
+            characteristic != null && (characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Write)                ||
+                                       characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.WriteWithoutResponse) ||
+                                       characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.ReliableWrites)       ||
+                                       characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.WritableAuxiliaries));
 
-        public bool CanNotify
-        {
-            get
-            {
-                return this.characteristic != null ? this.characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Notify) : false;
-            }
-        }
-
+        public bool CanNotify => characteristic != null && characteristic.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Notify);
 
         public string Name
         {
@@ -73,38 +53,25 @@ namespace HeartMonitorWPF
                         if (IsSigDefinedUuid(service.Uuid))
                         {
                             if (Enum.TryParse(Utilities.ConvertUuidToShortId(service.Uuid).ToString(), out GattNativeServiceUuid serviceName))
-                            {
-                                return serviceName.ToString();
-                            }
+                            { return serviceName.ToString(); }
                         }
                         else
-                        {
-                            return "Custom Service: " + service.Uuid;
-                        }
+                        { return "Custom Service: " + service.Uuid; }
                         break;
                     case AttributeType.Characteristic:
                         if (IsSigDefinedUuid(characteristic.Uuid))
                         {
                             if (Enum.TryParse(Utilities.ConvertUuidToShortId(characteristic.Uuid).ToString(),
                                 out GattNativeCharacteristicUuid characteristicName))
-                            {
-                                return characteristicName.ToString();
-                            }
+                            { return characteristicName.ToString(); }
                         }
                         else
                         {
                             if (!string.IsNullOrEmpty(characteristic.UserDescription))
-                            {
-                                return characteristic.UserDescription;
-                            }
+                            { return characteristic.UserDescription; }
 
-                            else
-                            {
-                                return "Custom Characteristic: " + characteristic.Uuid;
-                            }
+                            return "Custom Characteristic: " + characteristic.Uuid;
                         }
-                        break;
-                    default:
                         break;
                 }
                 return "Invalid";
@@ -249,41 +216,49 @@ namespace HeartMonitorWPF
         {
             string result = string.Empty;
             // ... for devices
-            if (collection is List<DeviceInformation>)
+            if (collection is List<DeviceInformation> list)
             {
-                var foundDevices = (collection as List<DeviceInformation>).Where(d => d.Name.ToLower().StartsWith(name.ToLower())).ToList();
-                if (foundDevices.Count == 0)
+                var foundDevices = list.Where(d => d.Name.ToLower().StartsWith(name.ToLower())).ToList();
+                switch (foundDevices.Count)
                 {
-                    if (!Console.IsOutputRedirected)
-                        Console.WriteLine("Can't connect to {0}.", name);
-                }
-                else if (foundDevices.Count == 1)
-                {
-                    result = foundDevices.First().Id;
-                }
-                else
-                {
-                    if (!Console.IsOutputRedirected)
-                        Console.WriteLine("Found multiple devices with names started from {0}. Please provide an exact name.", name);
+                    case 0:
+                    {
+                        if (!Console.IsOutputRedirected)
+                            Console.WriteLine("Can't connect to {0}.", name);
+                        break;
+                    }
+                    case 1:
+                        result = foundDevices.First().Id;
+                        break;
+                    default:
+                    {
+                        if (!Console.IsOutputRedirected)
+                            Console.WriteLine("Found multiple devices with names started from {0}. Please provide an exact name.", name);
+                        break;
+                    }
                 }
             }
             // for services or attributes
             else
             {
-                var foundDispAttrs = (collection as List<BluetoothLEAttributeDisplay>).Where(d => d.Name.ToLower().StartsWith(name.ToLower())).ToList();
-                if (foundDispAttrs.Count == 0)
+                var foundDispAttrs = ((collection as List<BluetoothLEAttributeDisplay>) ?? throw new InvalidOperationException()).Where(d => d.Name.ToLower().StartsWith(name.ToLower())).ToList();
+                switch (foundDispAttrs.Count)
                 {
-                    if (Console.IsOutputRedirected)
-                        Console.WriteLine("No service/characteristic found by name {0}.", name);
-                }
-                else if (foundDispAttrs.Count == 1)
-                {
-                    result = foundDispAttrs.First().Name;
-                }
-                else
-                {
-                    if (Console.IsOutputRedirected)
-                        Console.WriteLine("Found multiple services/characteristic with names started from {0}. Please provide an exact name.", name);
+                    case 0:
+                    {
+                        if (Console.IsOutputRedirected)
+                            Console.WriteLine("No service/characteristic found by name {0}.", name);
+                        break;
+                    }
+                    case 1:
+                        result = foundDispAttrs.First().Name;
+                        break;
+                    default:
+                    {
+                        if (Console.IsOutputRedirected)
+                            Console.WriteLine("Found multiple services/characteristic with names started from {0}. Please provide an exact name.", name);
+                        break;
+                    }
                 }
             }
             return result;
@@ -296,15 +271,9 @@ namespace HeartMonitorWPF
         {
             using var timeoutCancellationTokenSource = new CancellationTokenSource();
             var completedTask = await Task.WhenAny(task, Task.Delay(timeout, timeoutCancellationTokenSource.Token));
-            if (completedTask == task)
-            {
-                timeoutCancellationTokenSource.Cancel();
-                return await task;  // Very important in order to propagate exceptions
-            }
-            else
-            {
-                throw new TimeoutException("The operation has timed out.");
-            }
+            if (completedTask != task) throw new TimeoutException("The operation has timed out.");
+            timeoutCancellationTokenSource.Cancel();
+            return await task; // Very important in order to propagate exceptions
         }
     }
 
@@ -322,7 +291,7 @@ namespace HeartMonitorWPF
         UTF8,
         Dec,
         Hex,
-        Bin,
+        Bin
     }
 
     /// <summary>
