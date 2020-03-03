@@ -28,7 +28,7 @@
                 <Style TargetType="lvc:LineSeries">
                     <Setter Property="StrokeThickness" Value="0"></Setter>
                     <Setter Property="Fill" Value="#CC2196F3"></Setter>
-                    <Setter Property="LineSmoothness" Value=".3"></Setter>
+                    <Setter Property="LineSmoothness" Value="3"></Setter>
                     <Setter Property="AreaLimit" Value="0"></Setter>
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding IsHot}" Value="true">
