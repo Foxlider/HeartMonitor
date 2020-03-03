@@ -13,9 +13,6 @@ namespace HeartMonitorConsole
 {
     class Program
     {
-        static List<double> lastValues = new List<double>();
-
-
         static List<DeviceInformation> _deviceList = new List<DeviceInformation>();
         static BluetoothLEDevice _selectedDevice = null;
 

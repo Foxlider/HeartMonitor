@@ -20,6 +20,13 @@ namespace HeartMonitorWPF
             InitializeComponent();
         }
 
+        private void MetroWindow_Closing(object sender, CancelEventArgs e)
+        {
+            if(DataContext is SpeedTestVm context)
+            {
+                context.StopCommand.Execute(null);
+            }
+        }
     }
 
     public class RelayCommand : ICommand

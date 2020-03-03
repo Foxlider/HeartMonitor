@@ -27,16 +27,14 @@ namespace HeartMonitorWPF
 
         static ManualResetEvent _notifyCompleteEvent = null;
         static bool _primed = false;
-        static int _errorCode = 0;
-        static bool _running = false;
         private double LastReading;
 
-        static string _aqsAllBLEDevices = "(System.Devices.Aep.ProtocolId:=\"{bb7bb05e-5972-42b5-94fc-76eaa7084d49}\")";
-        static string[] _requestedBLEProperties = { "System.Devices.Aep.DeviceAddress", "System.Devices.Aep.Bluetooth.Le.IsConnectable", };
+        static readonly string _aqsAllBLEDevices = "(System.Devices.Aep.ProtocolId:=\"{bb7bb05e-5972-42b5-94fc-76eaa7084d49}\")";
+        static readonly string[] _requestedBLEProperties = { "System.Devices.Aep.DeviceAddress", "System.Devices.Aep.Bluetooth.Le.IsConnectable", };
 
         // Current data format
-        static DataFormat _dataFormat = DataFormat.Dec;
-        static TimeSpan _timeout = TimeSpan.FromSeconds(3);
+        static readonly DataFormat _dataFormat = DataFormat.Dec;
+        static readonly TimeSpan _timeout = TimeSpan.FromSeconds(3);
 
         private double _trend = 80;
         private double _count;
@@ -109,6 +107,7 @@ namespace HeartMonitorWPF
 
         private void Stop()
         {
+            CloseDevice();
             IsReading = false;
             FlyoutMessage = "STOPPED";
         }
@@ -128,7 +127,7 @@ namespace HeartMonitorWPF
             //to keep everything running faster
             IsReading = true;
 
-            Action readFromTread = () =>
+            void readFromTread()
             {
                 while (IsReading)
                 {
@@ -144,7 +143,7 @@ namespace HeartMonitorWPF
                     Count = Values.Count;
                     CurrentLecture = _trend;
                 }
-            };
+            }
 
             Task.Factory.StartNew(readFromTread);
         }
@@ -189,8 +188,6 @@ namespace HeartMonitorWPF
             watcher.Stopped += (DeviceWatcher sender, object arg) => { _deviceList.Clear(); sender.Start(); };
             watcher.Start();
 
-
-            _errorCode = 0;
             //Search for polar device
             FlyoutMessage = "Searching device...";
             ListDevices();
@@ -206,7 +203,7 @@ namespace HeartMonitorWPF
 
             //Connecting to device
             FlyoutMessage = "Connecting...";
-            _errorCode += await OpenDevice(tempDevice.Name);
+            await OpenDevice(tempDevice.Name);
 
             //Search for correct service
             FlyoutMessage = "Searching service...";
@@ -222,8 +219,8 @@ namespace HeartMonitorWPF
             Thread.Sleep(1000);
             //Subscribing to service
             FlyoutMessage = "Registerring service...";
-            _errorCode += await SetService(tempService.Name);
-            _errorCode += await SubscribeToCharacteristic(tempService.Name);
+            await SetService(tempService.Name);
+            await SubscribeToCharacteristic(tempService.Name);
 
             FlyoutMessage = "Listening...";
         }
@@ -579,8 +576,8 @@ namespace HeartMonitorWPF
             {
                 if (device.Id == deviceId)
                 {
-                    if (device.Name.Contains("Polar", StringComparison.OrdinalIgnoreCase))
-                        _running = false;
+                    //if (device.Name.Contains("Polar", StringComparison.OrdinalIgnoreCase))
+                    //    _running = false;
                     return device;
                 }
             }
