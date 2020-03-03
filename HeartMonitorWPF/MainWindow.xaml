@@ -17,7 +17,6 @@
             <RowDefinition Height="Auto"></RowDefinition>
             <RowDefinition Height="*"></RowDefinition>
         </Grid.RowDefinitions>
-        <TextBlock TextWrapping="Wrap">Here we are adding a value every millisecond from 2 different tasks</TextBlock>
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="15">
             <Button Command="{Binding ReadCommand}">Start Lecture</Button>
             <Button Command="{Binding StopCommand}">Stop</Button>
@@ -39,7 +38,7 @@
                 </Style>
                 <Style TargetType="lvc:Separator">
                     <Setter Property="Stroke" Value="#DADADA"></Setter>
-                    <Setter Property="StrokeThickness" Value="2"></Setter>
+                    <Setter Property="StrokeThickness" Value="1"></Setter>
                     <Style.Triggers>
                         <Trigger Property="AxisOrientation" Value="X">
                             <Setter Property="IsEnabled" Value="False"></Setter>
@@ -51,18 +50,24 @@
                 <lvc:LineSeries Values="{Binding Values}" PointGeometry="{x:Null}"></lvc:LineSeries>
             </lvc:CartesianChart.Series>
             <lvc:CartesianChart.AxisX>
-                <lvc:Axis MaxValue="240" ShowLabels="False"></lvc:Axis>
+                <lvc:Axis MaxValue="{Binding Buffer}" ShowLabels="False"></lvc:Axis>
             </lvc:CartesianChart.AxisX>
             <lvc:CartesianChart.AxisY>
-                <lvc:Axis>
+                <lvc:Axis MinValue="60" MaxValue="140">
                     <lvc:Axis.Sections>
-                        <lvc:AxisSection Value="0" StrokeThickness="3" Stroke="#303030"></lvc:AxisSection>
+                        <lvc:AxisSection Value="100" StrokeThickness="2" Stroke="#303030"></lvc:AxisSection>
                     </lvc:Axis.Sections>
                 </lvc:Axis>
             </lvc:CartesianChart.AxisY>
         </lvc:CartesianChart>
         <TextBlock Grid.Row="2" VerticalAlignment="Bottom" HorizontalAlignment="Right" 
-                   Margin="40 20" FontSize="110" Foreground="#72000000" 
+                   Margin="40 20" FontSize="90" Foreground="#72000000" 
                    Text="{Binding CurrentLecture, StringFormat={}{0:N1} BPM}"></TextBlock>
+        <mah:Flyout Name="FlyoutPopup" Grid.Row="2" IsOpen="{Binding FlyoutOpen}" AutoCloseInterval="5000" IsAutoCloseEnabled="True" Position="Bottom" MaxHeight="100" Opacity="0.8" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" >
+            <mah:Flyout.Effect>
+                <DropShadowEffect BlurRadius="10" RenderingBias="Performance" ShadowDepth="0"/>
+            </mah:Flyout.Effect>
+            <Label Name="flyoutMessage" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Content="{Binding FlyoutMessage}"/>
+        </mah:Flyout>
     </Grid>
 </mah:MetroWindow>
