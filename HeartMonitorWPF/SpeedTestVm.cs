@@ -344,62 +344,58 @@ namespace HeartMonitorWPF
         /// <param name="serviceName"></param>
         private async Task<bool> SetService(string serviceName)
         {
-            if (_selectedDevice != null)
+            if (_selectedDevice == null) return false;
+            if (string.IsNullOrEmpty(serviceName)) return false;
+
+            string foundName = Utilities.GetIdByNameOrNumber(_services, serviceName);
+
+            // If device is found, connect to device and enumerate all services
+            if (string.IsNullOrEmpty(foundName)) return false;
+
+            var attr = _services.FirstOrDefault(s => s.Name.Equals(foundName));
+
+            try
             {
-                if (!string.IsNullOrEmpty(serviceName))
-                {
-                    string foundName = Utilities.GetIdByNameOrNumber(_services, serviceName);
-
-                    // If device is found, connect to device and enumerate all services
-                    if (!string.IsNullOrEmpty(foundName))
+                // Ensure we have access to the device.
+                if (attr != null) {
+                    var accessStatus = await attr.service.RequestAccessAsync();
+                    if (accessStatus == DeviceAccessStatus.Allowed)
                     {
-                        var attr = _services.FirstOrDefault(s => s.Name.Equals(foundName));
-
-                        try
+                        // BT_Code: Get all the child characteristics of a service. Use the cache mode to specify uncached characterstics only 
+                        // and the new Async functions to get the characteristics of unpaired devices as well. 
+                        var result = await attr.service.GetCharacteristicsAsync(BluetoothCacheMode.Uncached);
+                        if (result.Status == GattCommunicationStatus.Success)
                         {
-                            // Ensure we have access to the device.
-                            if (attr != null) {
-                                var accessStatus = await attr.service.RequestAccessAsync();
-                                if (accessStatus == DeviceAccessStatus.Allowed)
-                                {
-                                    // BT_Code: Get all the child characteristics of a service. Use the cache mode to specify uncached characterstics only 
-                                    // and the new Async functions to get the characteristics of unpaired devices as well. 
-                                    var result = await attr.service.GetCharacteristicsAsync(BluetoothCacheMode.Uncached);
-                                    if (result.Status == GattCommunicationStatus.Success)
-                                    {
-                                        var characteristics = result.Characteristics;
-                                        _selectedService = attr;
-                                        _characteristics.Clear();
-                                        if (!Console.IsInputRedirected) Console.WriteLine($"Selected service {attr.Name}.");
+                            var characteristics = result.Characteristics;
+                            _selectedService = attr;
+                            _characteristics.Clear();
+                            if (!Console.IsInputRedirected) Console.WriteLine($"Selected service {attr.Name}.");
 
-                                        if (characteristics.Count > 0)
-                                        {
-                                            for (int i = 0; i < characteristics.Count; i++)
-                                            {
-                                                var charToDisplay = new BluetoothLEAttributeDisplay(characteristics[i]);
-                                                _characteristics.Add(charToDisplay);
-                                            }
-                                            return true;
-                                        }
-                                        FlyoutMessage = "Service don't have any characteristic.";
-                                    }
-                                    else
-                                    {
-                                        Thread.Sleep(1000);
-                                        FlyoutMessage += $"\nError accessing service : {result.Status.ToString()}";
-                                        return false;
-                                    }
+                            if (characteristics.Count > 0)
+                            {
+                                for (int i = 0; i < characteristics.Count; i++)
+                                {
+                                    var charToDisplay = new BluetoothLEAttributeDisplay(characteristics[i]);
+                                    _characteristics.Add(charToDisplay);
                                 }
-                                // Not granted access
-                                else
-                                { FlyoutMessage = "Error accessing service."; }
+                                return true;
                             }
+                            FlyoutMessage = "Service don't have any characteristic.";
                         }
-                        catch (Exception ex)
-                        { FlyoutMessage = $"Restricted service. Can't read characteristics: {ex.Message}"; }
+                        else
+                        {
+                            Thread.Sleep(1000);
+                            FlyoutMessage += $"\nError accessing service : {result.Status.ToString()}";
+                            return false;
+                        }
                     }
+                    // Not granted access
+                    else
+                    { FlyoutMessage = "Error accessing service."; }
                 }
             }
+            catch (Exception ex)
+            { FlyoutMessage = $"Restricted service. Can't read characteristics: {ex.Message}"; }
             return false;
         }
 
