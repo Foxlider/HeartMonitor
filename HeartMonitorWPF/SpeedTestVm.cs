@@ -212,7 +212,18 @@ namespace HeartMonitorWPF
             Thread.Sleep(1000);
             //Subscribing to service
             FlyoutMessage = "Registerring service...";
-            await SetService(tempService.Name);
+            var attempts = 0;
+            while (!await SetService(tempService.Name) && attempts < 5)
+            {
+                Thread.Sleep(1000);
+                FlyoutMessage = "Retrying...";
+                attempts++;
+            }
+            if (attempts >= 5)
+            {
+                FlyoutMessage = "Giving up";
+                return;
+            }
             await SubscribeToCharacteristic(tempService.Name);
         }
 
@@ -331,7 +342,7 @@ namespace HeartMonitorWPF
         /// Set active service for current device
         /// </summary>
         /// <param name="serviceName"></param>
-        private async Task SetService(string serviceName)
+        private async Task<bool> SetService(string serviceName)
         {
             if (_selectedDevice != null)
             {
@@ -367,52 +378,29 @@ namespace HeartMonitorWPF
                                             {
                                                 var charToDisplay = new BluetoothLEAttributeDisplay(characteristics[i]);
                                                 _characteristics.Add(charToDisplay);
-                                                if (!Console.IsInputRedirected) Console.WriteLine($"#{i:00}: {charToDisplay.Name}\t{charToDisplay.Chars}");
                                             }
+                                            return true;
                                         }
-                                        else
-                                        {
-                                            if (!Console.IsOutputRedirected)
-                                                Console.WriteLine("Service don't have any characteristic.");
-                                        }
+                                        FlyoutMessage = "Service don't have any characteristic.";
                                     }
                                     else
                                     {
-                                        if (!Console.IsOutputRedirected)
-                                            Console.WriteLine("Error accessing service.");
+                                        Thread.Sleep(1000);
+                                        FlyoutMessage += $"\nError accessing service : {result.Status.ToString()}";
+                                        return false;
                                     }
                                 }
                                 // Not granted access
                                 else
-                                {
-                                    if (!Console.IsOutputRedirected)
-                                        Console.WriteLine("Error accessing service.");
-                                }
+                                { FlyoutMessage = "Error accessing service."; }
                             }
                         }
                         catch (Exception ex)
-                        {
-                            if (!Console.IsOutputRedirected)
-                                Console.WriteLine($"Restricted service. Can't read characteristics: {ex.Message}");
-                        }
-                    }
-                    else
-                    {
-                        if (!Console.IsOutputRedirected)
-                            Console.WriteLine("Invalid service name or number");
+                        { FlyoutMessage = $"Restricted service. Can't read characteristics: {ex.Message}"; }
                     }
                 }
-                else
-                {
-                    if (!Console.IsOutputRedirected)
-                        Console.WriteLine("Invalid service name or number");
-                }
             }
-            else
-            {
-                if (!Console.IsOutputRedirected)
-                    Console.WriteLine("Nothing to use, no BLE device connected.");
-            }
+            return false;
         }
 
         /// <summary>

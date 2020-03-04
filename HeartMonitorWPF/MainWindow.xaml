@@ -10,7 +10,7 @@
                  AllowsTransparency="True"
                  Background="Transparent"
                  Closing="MetroWindow_Closing"
-                 Title="MainWindow" Height="450" Width="800">
+                 Title="MainWindow" Height="180" Width="500">
     <mah:MetroWindow.DataContext>
         <speedTest:SpeedTestVm></speedTest:SpeedTestVm>
     </mah:MetroWindow.DataContext>
@@ -63,8 +63,8 @@
                 </lvc:Axis>
             </lvc:CartesianChart.AxisY>
         </lvc:CartesianChart>
-        <TextBlock Grid.Row="2" VerticalAlignment="Top" HorizontalAlignment="Left" 
-                   Margin="40 20" FontSize="90" Foreground="#DD222222" 
+        <TextBlock Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Left" 
+                   Margin="40 20" FontSize="80" Foreground="#DD111111" 
                    Text="{Binding CurrentLecture, StringFormat={}{0:N1} BPM}"></TextBlock>
         <mah:Flyout Name="FlyoutPopup" Grid.Row="2" IsOpen="{Binding FlyoutOpen}" AutoCloseInterval="5000" IsAutoCloseEnabled="True" Position="Bottom" MaxHeight="100" Opacity="0.8" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" >
             <mah:Flyout.Effect>
