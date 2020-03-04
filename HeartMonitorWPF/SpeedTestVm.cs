@@ -55,7 +55,7 @@ namespace HeartMonitorWPF
         public RelayCommand StopCommand { get; }
         public GearedValues<double> Values { get; set; }
 
-        public int Buffer { get; } = 10240;
+        public int Buffer { get; } = 8192;
 
         private string _flyoutMessage;
         public string FlyoutMessage
@@ -124,7 +124,7 @@ namespace HeartMonitorWPF
         {
             while (IsReading)
             {
-                Thread.Sleep(100);
+                Thread.Sleep(10);
 
                 _trend = LastReading;
                 
@@ -214,8 +214,6 @@ namespace HeartMonitorWPF
             FlyoutMessage = "Registerring service...";
             await SetService(tempService.Name);
             await SubscribeToCharacteristic(tempService.Name);
-
-            FlyoutMessage = "Listening...";
         }
 
         private void ListDevices()
@@ -492,6 +490,7 @@ namespace HeartMonitorWPF
                                 if (status == GattCommunicationStatus.Success)
                                 {
                                     _subscribers.Add(attr.characteristic);
+                                    FlyoutMessage = "Listening...";
                                     attr.characteristic.ValueChanged += Characteristic_ValueChanged;
                                 }
                                 else
