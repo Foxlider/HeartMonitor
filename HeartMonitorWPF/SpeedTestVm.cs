@@ -183,12 +183,10 @@ namespace HeartMonitorWPF
 
             //Search for polar device
             FlyoutMessage = "Searching device...";
-            ListDevices();
 
             DeviceInformation tempDevice = null;
             while (tempDevice == null)
             {
-                ListDevices();
                 tempDevice = _deviceList.FirstOrDefault(d => d.Name.Contains("Polar", StringComparison.OrdinalIgnoreCase));
                 if (tempDevice == null)
                     Thread.Sleep(1000);
@@ -226,16 +224,12 @@ namespace HeartMonitorWPF
             }
             await SubscribeToCharacteristic(tempService.Name);
         }
-
-        private void ListDevices()
-        {
-            var names = _deviceList.OrderBy(d => d.Name).Where(d => !string.IsNullOrEmpty(d.Name)).Select(d => d.Name).ToList();
-
-            for (int i = 0; i < names.Count; i++)
-                Console.WriteLine($"#{i:00}: {names[i]}");
-        }
-
-
+        
+        /// <summary>
+        /// Connecting to a device
+        /// </summary>
+        /// <param name="deviceName"></param>
+        /// <returns></returns>
         private async Task OpenDevice(string deviceName)
         {
             if (!string.IsNullOrEmpty(deviceName))
@@ -344,8 +338,10 @@ namespace HeartMonitorWPF
         /// <param name="serviceName"></param>
         private async Task<bool> SetService(string serviceName)
         {
-            if (_selectedDevice == null) return false;
-            if (string.IsNullOrEmpty(serviceName)) return false;
+            if (_selectedDevice == null) 
+                return false;
+            if (string.IsNullOrEmpty(serviceName)) 
+                return false;
 
             string foundName = Utilities.GetIdByNameOrNumber(_services, serviceName);
 
@@ -357,7 +353,8 @@ namespace HeartMonitorWPF
             try
             {
                 // Ensure we have access to the device.
-                if (attr != null) {
+                if (attr != null) 
+                {
                     var accessStatus = await attr.service.RequestAccessAsync();
                     if (accessStatus == DeviceAccessStatus.Allowed)
                     {
@@ -371,27 +368,23 @@ namespace HeartMonitorWPF
                             _characteristics.Clear();
                             if (!Console.IsInputRedirected) Console.WriteLine($"Selected service {attr.Name}.");
 
-                            if (characteristics.Count > 0)
+                            if (characteristics.Count == 0) 
+                            { FlyoutMessage = "Service don't have any characteristic."; }
+
+                            foreach (var characteristic in characteristics)
                             {
-                                for (int i = 0; i < characteristics.Count; i++)
-                                {
-                                    var charToDisplay = new BluetoothLEAttributeDisplay(characteristics[i]);
-                                    _characteristics.Add(charToDisplay);
-                                }
-                                return true;
+                                var charToDisplay = new BluetoothLEAttributeDisplay(characteristic);
+                                _characteristics.Add(charToDisplay);
                             }
-                            FlyoutMessage = "Service don't have any characteristic.";
+                            return true;
+                            
                         }
-                        else
-                        {
-                            Thread.Sleep(1000);
-                            FlyoutMessage += $"\nError accessing service : {result.Status.ToString()}";
-                            return false;
-                        }
+                        Thread.Sleep(1000);
+                        FlyoutMessage += $"\nError accessing service : {result.Status.ToString()}";
+                        return false;
                     }
                     // Not granted access
-                    else
-                    { FlyoutMessage = "Error accessing service."; }
+                    FlyoutMessage = "Error accessing service.";
                 }
             }
             catch (Exception ex)
@@ -405,135 +398,116 @@ namespace HeartMonitorWPF
         /// <param name="param"></param>
         private async Task SubscribeToCharacteristic(string param)
         {
-            if (_selectedDevice != null)
+            //Checking if a device is connected
+            if (_selectedDevice == null)
             {
-                if (!string.IsNullOrEmpty(param))
-                {
-                    List<BluetoothLEAttributeDisplay> chars = new List<BluetoothLEAttributeDisplay>();
-
-                    string charName = string.Empty;
-                    var parts = param.Split('/');
-                    switch (parts.Length)
-                    {
-                        // Do we have parameter is in "service/characteristic" format?
-                        case 2: {
-                            string serviceName = Utilities.GetIdByNameOrNumber(_services, parts[0]);
-                            charName = parts[1];
-
-                            // If device is found, connect to device and enumerate all services
-                            if (!string.IsNullOrEmpty(serviceName))
-                            {
-                                var attr = _services.FirstOrDefault(s => s.Name.Equals(serviceName));
-                                IReadOnlyList<GattCharacteristic> characteristics = new List<GattCharacteristic>();
-
-                                try
-                                {
-                                    // Ensure we have access to the device.
-                                    if (attr != null) {
-                                        var accessStatus = await attr.service.RequestAccessAsync();
-                                        if (accessStatus == DeviceAccessStatus.Allowed)
-                                        {
-                                            var result = await attr.service.GetCharacteristicsAsync(BluetoothCacheMode.Uncached);
-                                            if (result.Status == GattCommunicationStatus.Success)
-                                                characteristics = result.Characteristics;
-                                        }
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    if (!Console.IsOutputRedirected)
-                                        Console.WriteLine($"Restricted service. Can't subscribe to characteristics: {ex.Message}");
-                                }
-
-                                chars.AddRange(characteristics.Select(c => new BluetoothLEAttributeDisplay(c)));
-                            }
-                            break;
-                        }
-                        case 1 when _selectedService == null: {
-                            if (!Console.IsOutputRedirected)
-                                Console.WriteLine("No service is selected.");
-                            return;
-                        }
-                        case 1:
-                            chars    = new List<BluetoothLEAttributeDisplay>(_characteristics);
-                            charName = parts[0];
-                            break;
-                    }
-
-                    // Read characteristic
-                    if (chars.Count > 0 && !string.IsNullOrEmpty(charName))
-                    {
-                        string useName = Utilities.GetIdByNameOrNumber(chars, charName);
-                        var attr = chars.FirstOrDefault(c => c.Name.Equals(useName));
-                        if (attr?.characteristic != null)
-                        {
-                            // First, check for existing subscription
-                            if (!_subscribers.Contains(attr.characteristic))
-                            {
-                                var status = await attr.characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify);
-                                if (status == GattCommunicationStatus.Success)
-                                {
-                                    _subscribers.Add(attr.characteristic);
-                                    FlyoutMessage = "Listening...";
-                                    attr.characteristic.ValueChanged += Characteristic_ValueChanged;
-                                }
-                                else
-                                {
-                                    if (!Console.IsOutputRedirected)
-                                        Console.WriteLine($"Can't subscribe to characteristic {useName}");
-                                }
-                            }
-                            else
-                            {
-                                if (!Console.IsOutputRedirected)
-                                    Console.WriteLine($"Already subscribed to characteristic {useName}");
-                            }
-                        }
-                        else
-                        {
-                            if (!Console.IsOutputRedirected)
-                                Console.WriteLine($"Invalid characteristic {useName}");
-                        }
-                    }
-                    else
-                    {
-                        if (!Console.IsOutputRedirected)
-                            Console.WriteLine("Nothing to subscribe, please specify characteristic name or #.");
-                    }
-                }
-                else
-                {
-                    if (!Console.IsOutputRedirected)
-                        Console.WriteLine("Nothing to subscribe, please specify characteristic name or #.");
-                }
+                DisplayError("No BLE device connected.");
+                return;
             }
-            else
+
+            //Checking if subscription is filled
+            if (string.IsNullOrEmpty(param))
             {
-                if (!Console.IsOutputRedirected)
-                    Console.WriteLine("No BLE device connected.");
+                DisplayError("Nothing to subscribe, please specify characteristic name or #.");
+                return;
             }
+
+            List<BluetoothLEAttributeDisplay> chars = new List<BluetoothLEAttributeDisplay>();
+            string charName = string.Empty;
+            var parts = param.Split('/');
+
+            switch (parts.Length)
+            {
+                // Do we have parameter is in "service/characteristic" format?
+                case 2:
+                    {
+                        string serviceName = Utilities.GetIdByNameOrNumber(_services, parts[0]);
+                        charName = parts[1];
+
+                        //Checking if we got a name
+                        if (string.IsNullOrEmpty(serviceName))
+                            break;
+                        var attri = _services.FirstOrDefault(s => s.Name.Equals(serviceName));
+                        IReadOnlyList<GattCharacteristic> characteristics = new List<GattCharacteristic>();
+
+                        try
+                        {
+                            if (attri == null)
+                                break;
+
+                            // Ensure we have access to the device.
+                            var accessStatus = await attri.service.RequestAccessAsync();
+                            if (accessStatus != DeviceAccessStatus.Allowed)
+                                break;
+
+                            //Check GattCommunication (if sevice is already connected, will return AccessDenied)
+                            var result = await attri.service.GetCharacteristicsAsync(BluetoothCacheMode.Uncached);
+                            if (result.Status == GattCommunicationStatus.Success)
+                                characteristics = result.Characteristics;
+                        }
+                        catch (Exception ex)
+                        { DisplayError($"Restricted service. Can't subscribe to characteristics: {ex.Message}"); }
+
+                        //Add characteristic
+                        chars.AddRange(characteristics.Select(c => new BluetoothLEAttributeDisplay(c)));
+                        break;
+                    }
+                case 1 when _selectedService == null:
+                    {
+                        DisplayError("No service is selected.");
+                        return;
+                    }
+                case 1:
+                    chars = new List<BluetoothLEAttributeDisplay>(_characteristics);
+                    charName = parts[0];
+                    break;
+            }
+
+            if (!(chars.Count > 0 && !string.IsNullOrEmpty(charName)))
+            {
+                DisplayError("Nothing to subscribe, please specify characteristic name or #.");
+                return;
+            }
+
+            string useName = Utilities.GetIdByNameOrNumber(chars, charName);
+            var attr = chars.FirstOrDefault(c => c.Name.Equals(useName));
+
+            if (attr?.characteristic == null)
+            {
+                DisplayError($"Invalid characteristic {useName}");
+                return;
+            }
+
+            if (_subscribers.Contains(attr.characteristic))
+            {
+                DisplayError($"Already subscribed to characteristic {useName}");
+                return;
+            }
+
+            var status = await attr.characteristic.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify);
+            if (status != GattCommunicationStatus.Success)
+            {
+                DisplayError($"Can't subscribe to characteristic {useName}");
+                return;
+            }
+
+            _subscribers.Add(attr.characteristic);
+            FlyoutMessage = "Listening...";
+            attr.characteristic.ValueChanged += Characteristic_ValueChanged;
+        }
+
+        private bool DisplayError(string msg)
+        {
+            FlyoutMessage = msg;
+            return false;
         }
 
         private DeviceInformation FindKnownDevice(string deviceId)
-        {
-            foreach (var device in _deviceList)
-            {
-                if (device.Id == deviceId)
-                {
-                    //if (device.Name.Contains("Polar", StringComparison.OrdinalIgnoreCase))
-                    //    _running = false;
-                    return device;
-                }
-            }
-            return null;
-        }
+        { return _deviceList.FirstOrDefault(device => device.Id == deviceId); }
 
 
         public event PropertyChangedEventHandler PropertyChanged;
-
         protected virtual void OnPropertyChanged(string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
+        { PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)); }
     }
 }
