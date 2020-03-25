@@ -110,9 +110,7 @@ namespace HeartMonitorWPF
     public class BluetoothLEDeviceDisplay : INotifyPropertyChanged
     {
         public BluetoothLEDeviceDisplay(DeviceInformation deviceInfoIn)
-        {
-            DeviceInformation = deviceInfoIn;
-        }
+        { DeviceInformation = deviceInfoIn; }
 
         public DeviceInformation DeviceInformation { get; private set; }
 
@@ -140,9 +138,7 @@ namespace HeartMonitorWPF
         }
 
         protected void OnPropertyChanged(string name)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
+        { PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name)); }
     }
 
     public static class Utilities
@@ -271,7 +267,10 @@ namespace HeartMonitorWPF
         {
             using var timeoutCancellationTokenSource = new CancellationTokenSource();
             var completedTask = await Task.WhenAny(task, Task.Delay(timeout, timeoutCancellationTokenSource.Token));
-            if (completedTask != task) throw new TimeoutException("The operation has timed out.");
+            
+            if (completedTask != task) 
+                throw new TimeoutException("The operation has timed out.");
+            
             timeoutCancellationTokenSource.Cancel();
             return await task; // Very important in order to propagate exceptions
         }

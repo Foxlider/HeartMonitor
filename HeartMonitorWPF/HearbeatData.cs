@@ -11,7 +11,7 @@ using LiveCharts.Geared;
 
 namespace HeartMonitorWPF
 {
-    public class SpeedTestVm : INotifyPropertyChanged
+    public class HearbeatData : INotifyPropertyChanged
     {
         static List<DeviceInformation> _deviceList = new List<DeviceInformation>();
         static BluetoothLEDevice _selectedDevice;
@@ -40,7 +40,7 @@ namespace HeartMonitorWPF
         private double _currentLecture;
         private bool _isHot;
 
-        public SpeedTestVm()
+        public HearbeatData()
         {
             Values = new GearedValues<double>().WithQuality(Quality.Highest);
             ReadCommand = new RelayCommand(Read);
@@ -118,9 +118,9 @@ namespace HeartMonitorWPF
             //to keep everything running faster
             IsReading = true;
 
-            Task.Factory.StartNew(readFromTread);
+            Task.Factory.StartNew(ReadFromTread);
         }
-        private void readFromTread()
+        private void ReadFromTread()
         {
             while (IsReading)
             {
@@ -156,11 +156,11 @@ namespace HeartMonitorWPF
                 //lastValues.Add(Utilities.FormatData(args.CharacteristicValue));
                 if (Console.IsInputRedirected) Console.Write($"{newValue}");
                 else Console.WriteLine($"Value changed for {sender.Uuid}: {newValue}");
-                if (_notifyCompleteEvent != null)
-                {
-                    _notifyCompleteEvent.Set();
-                    _notifyCompleteEvent = null;
-                }
+
+                if (_notifyCompleteEvent == null) return;
+
+                _notifyCompleteEvent.Set();
+                _notifyCompleteEvent = null;
             }
             else _primed = true;
         }
@@ -268,20 +268,14 @@ namespace HeartMonitorWPF
                             }
                         }
                         else
-                        {
-                            Console.WriteLine($"Device {deviceName} is unreachable.");
-                        }
+                        { Console.WriteLine($"Device {deviceName} is unreachable."); }
                     }
                     catch
-                    {
-                        Console.WriteLine($"Device {deviceName} is unreachable.");
-                    }
+                    { Console.WriteLine($"Device {deviceName} is unreachable."); }
                 }
             }
             else
-            {
-                Console.WriteLine("Device name can not be empty.");
-            }
+            { Console.WriteLine("Device name can not be empty."); }
         }
 
         /// <summary>
@@ -290,9 +284,11 @@ namespace HeartMonitorWPF
         private void CloseDevice()
         {
             // Remove all subscriptions
-            if (_subscribers.Count > 0) Unsubscribe("all");
+            if (_subscribers.Count > 0) 
+                Unsubscribe("all");
 
-            if (_selectedDevice == null) return;
+            if (_selectedDevice == null) 
+                return;
 
             if (!Console.IsInputRedirected)
                 Console.WriteLine($"Device {_selectedDevice.Name} is disconnected.");

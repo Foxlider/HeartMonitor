@@ -5,14 +5,14 @@
                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                  xmlns:lvc="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
-                 xmlns:speedTest="clr-namespace:HeartMonitorWPF"
+                 xmlns:context="clr-namespace:HeartMonitorWPF"
                  mc:Ignorable="d"
                  AllowsTransparency="True"
                  Background="Transparent"
                  Closing="MetroWindow_Closing"
                  Title="MainWindow" Height="180" Width="500">
     <mah:MetroWindow.DataContext>
-        <speedTest:SpeedTestVm></speedTest:SpeedTestVm>
+        <context:HearbeatData></context:HearbeatData>
     </mah:MetroWindow.DataContext>
     <Grid>
         <Grid.RowDefinitions>
@@ -20,11 +20,6 @@
             <RowDefinition Height="Auto"></RowDefinition>
             <RowDefinition Height="*"></RowDefinition>
         </Grid.RowDefinitions>
-        <!--<StackPanel Grid.Row="1" Orientation="Horizontal" Margin="15">
-            <Button Command="{Binding ReadCommand}">Start Lecture</Button>
-            <Button Command="{Binding StopCommand}">Stop</Button>
-            <TextBlock VerticalAlignment="Center" Margin="15 0" Text="{Binding Count, StringFormat=Buffer: {0}}"></TextBlock>
-        </StackPanel>-->
         <lvc:CartesianChart Grid.Row="2" DisableAnimations="True" DataTooltip="{x:Null}" Hoverable="False" Background="#20808080">
             <lvc:CartesianChart.Resources>
                 <Style TargetType="lvc:LineSeries">
@@ -57,20 +52,17 @@
             </lvc:CartesianChart.AxisX>
             <lvc:CartesianChart.AxisY>
                 <lvc:Axis MinValue="60" MaxValue="140">
-                    <!--<lvc:Axis.Sections>
-                        <lvc:AxisSection Value="100" StrokeThickness="2" Stroke="#303030"></lvc:AxisSection>
-                    </lvc:Axis.Sections>-->
                 </lvc:Axis>
             </lvc:CartesianChart.AxisY>
         </lvc:CartesianChart>
         <TextBlock Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Left" 
                    Margin="40 20" FontSize="80" Foreground="#DD111111" 
                    Text="{Binding CurrentLecture, StringFormat={}{0:N1} BPM}"></TextBlock>
-        <mah:Flyout Name="FlyoutPopup" Grid.Row="2" IsOpen="{Binding FlyoutOpen}" AutoCloseInterval="5000" IsAutoCloseEnabled="True" Position="Bottom" MaxHeight="100" Opacity="0.8" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" >
+        <mah:Flyout Grid.Row="2" IsOpen="{Binding FlyoutOpen}" AutoCloseInterval="5000" IsAutoCloseEnabled="True" Position="Bottom" MaxHeight="100" Opacity="0.8" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" >
             <mah:Flyout.Effect>
                 <DropShadowEffect BlurRadius="10" RenderingBias="Performance" ShadowDepth="0"/>
             </mah:Flyout.Effect>
-            <Label Name="flyoutMessage" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Content="{Binding FlyoutMessage}"/>
+            <Label Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" Content="{Binding FlyoutMessage}"/>
         </mah:Flyout>
     </Grid>
 </mah:MetroWindow>

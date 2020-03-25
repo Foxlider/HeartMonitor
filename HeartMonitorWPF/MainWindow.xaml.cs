@@ -12,16 +12,12 @@ namespace HeartMonitorWPF
 
 
         public MainWindow()
-        {
-            InitializeComponent();
-        }
+        { InitializeComponent(); }
 
         private void MetroWindow_Closing(object sender, CancelEventArgs e)
         {
-            if(DataContext is SpeedTestVm context)
-            {
+            if(DataContext is HearbeatData context)
                 context.StopCommand.Execute(null);
-            }
         }
     }
 
@@ -30,19 +26,13 @@ namespace HeartMonitorWPF
         private Action _action;
 
         public RelayCommand(Action action)
-        {
-            _action = action;
-        }
+        { _action = action; }
 
         public bool CanExecute(object parameter)
-        {
-            return true;
-        }
+        { return true; }
 
         public void Execute(object parameter)
-        {
-            _action();
-        }
+        { _action(); }
 
         public event EventHandler CanExecuteChanged;
     }
